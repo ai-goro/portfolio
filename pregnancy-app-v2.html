@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>妊娠週数トラッカー</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --pink:#F8BBD0;--pink-light:#FCE4EC;--pink-dark:#EC407A;
+  --beige:#FFF8E1;--beige-dark:#FFECB3;
+  --peach:#FFCCBC;--peach-dark:#FF8A65;
+  --text:#5D4037;--text-light:#8D6E63;--text-lighter:#BCAAA4;
+  --white:#FFFDF9;--card-bg:#FFFFFF;
+  --shadow:0 4px 20px rgba(0,0,0,0.06);
+  --radius:20px;
+}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Hiragino Maru Gothic Pro','Rounded Mplus 1c','Yu Gothic','Meiryo',sans-serif;
+  background:linear-gradient(135deg,var(--pink-light)0%,var(--beige)50%,var(--peach)100%);
+  color:var(--text);
+  -webkit-tap-highlight-color:transparent;
+}
+.page{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  overflow-y:auto;overflow-x:hidden;
+  transition:transform .5s cubic-bezier(.4,0,.2,1),opacity .5s ease;
+  -webkit-overflow-scrolling:touch;
+}
+.page.hidden{transform:translateX(100%);opacity:0;pointer-events:none}
+.page.slide-left{transform:translateX(-100%);opacity:0;pointer-events:none}
+
+/* ===== PAGE 1: SETUP ===== */
+.setup-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;padding:24px}
+.setup-logo{margin-bottom:8px}
+.setup-title{font-size:26px;font-weight:700;color:var(--pink-dark);margin-bottom:4px;text-align:center}
+.setup-subtitle{font-size:14px;color:var(--text-light);margin-bottom:28px;text-align:center}
+.setup-card{
+  background:var(--card-bg);border-radius:var(--radius);padding:28px 24px;
+  width:100%;max-width:380px;box-shadow:var(--shadow);
+}
+.field-label{font-size:13px;font-weight:700;color:var(--text-light);margin-bottom:8px;display:block}
+.field-input{
+  width:100%;padding:14px 16px;border:2px solid var(--beige-dark);border-radius:14px;
+  font-size:16px;color:var(--text);background:var(--beige);outline:none;
+  font-family:inherit;transition:border-color .3s;
+}
+.field-input:focus{border-color:var(--pink)}
+.method-group{margin:20px 0}
+.method-option{
+  display:flex;align-items:center;padding:14px 16px;margin-bottom:10px;
+  border:2px solid var(--beige-dark);border-radius:14px;cursor:pointer;
+  background:var(--white);transition:all .3s;
+}
+.method-option:hover,.method-option.active{border-color:var(--pink);background:var(--pink-light)}
+.method-option .radio{
+  width:22px;height:22px;border-radius:50%;border:2px solid var(--text-lighter);
+  margin-right:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  transition:all .3s;
+}
+.method-option.active .radio{border-color:var(--pink-dark);background:var(--pink-dark)}
+.method-option.active .radio::after{content:'';width:8px;height:8px;background:#fff;border-radius:50%}
+.method-option .label{font-size:14px;font-weight:600;color:var(--text)}
+.sub-input{
+  margin-top:12px;padding:16px;background:var(--beige);border-radius:14px;
+  display:none;animation:fadeIn .3s;
+}
+.sub-input.show{display:block}
+.date-input{
+  width:100%;padding:12px 14px;border:2px solid var(--beige-dark);border-radius:12px;
+  font-size:16px;color:var(--text);background:#fff;outline:none;font-family:inherit;
+}
+.date-input:focus{border-color:var(--pink)}
+.manual-row{display:flex;align-items:center;gap:8px}
+.manual-input{
+  width:70px;padding:12px;border:2px solid var(--beige-dark);border-radius:12px;
+  font-size:18px;text-align:center;color:var(--text);background:#fff;outline:none;
+}
+.manual-input:focus{border-color:var(--pink)}
+.manual-label{font-size:16px;color:var(--text-light);font-weight:600}
+.btn-start{
+  width:100%;padding:16px;margin-top:24px;border:none;border-radius:16px;
+  background:linear-gradient(135deg,var(--pink-dark),var(--peach-dark));
+  color:#fff;font-size:18px;font-weight:700;cursor:pointer;
+  font-family:inherit;box-shadow:0 4px 16px rgba(236,64,122,.3);
+  transition:transform .2s,box-shadow .2s;
+}
+.btn-start:active{transform:scale(.97);box-shadow:0 2px 8px rgba(236,64,122,.2)}
+.btn-start:disabled{opacity:.5;cursor:not-allowed}
+.error-msg{color:#E53935;font-size:12px;margin-top:6px;display:none}
+
+/* ===== PAGE 2: MAIN ===== */
+.main-page{background:transparent}
+.main-header{
+  position:sticky;top:0;z-index:100;
+  background:linear-gradient(135deg,var(--pink-dark),#F06292);
+  padding:16px 20px;color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 4px 20px rgba(236,64,122,.2);
+}
+.header-info h1{font-size:20px;font-weight:700}
+.header-info p{font-size:12px;opacity:.85;margin-top:2px}
+.btn-settings{
+  width:44px;height:44px;border:none;border-radius:50%;
+  background:rgba(255,255,255,.2);color:#fff;font-size:22px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .3s;
+}
+.btn-settings:hover{background:rgba(255,255,255,.35)}
+
+.main-content{padding:20px 16px 100px}
+
+/* Baby Card */
+.baby-card{
+  background:var(--card-bg);border-radius:var(--radius);padding:28px 20px;
+  text-align:center;box-shadow:var(--shadow);margin-bottom:16px;
+  position:relative;overflow:hidden;
+}
+.baby-card::before{
+  content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;
+  background:radial-gradient(circle,rgba(248,187,208,.3),transparent);border-radius:50%;
+}
+.baby-week-badge{
+  display:inline-block;padding:6px 20px;border-radius:30px;
+  background:linear-gradient(135deg,var(--pink-dark),#F06292);
+  color:#fff;font-size:13px;font-weight:700;margin-bottom:16px;
+}
+.baby-svg-wrap{
+  width:180px;height:180px;margin:0 auto 16px;
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle,var(--pink-light),transparent 70%);
+  border-radius:50%;
+}
+.baby-svg-wrap svg{width:100%;height:100%}
+.baby-size{font-size:15px;color:var(--text-light);margin-top:4px;line-height:1.7}
+.baby-size strong{color:var(--pink-dark);font-size:17px}
+
+/* Info Cards */
+.info-card{
+  background:var(--card-bg);border-radius:var(--radius);padding:20px;
+  box-shadow:var(--shadow);margin-bottom:14px;
+}
+.info-card-header{
+  display:flex;align-items:center;gap:10px;margin-bottom:12px;
+}
+.info-icon{
+  width:40px;height:40px;border-radius:12px;display:flex;
+  align-items:center;justify-content:center;font-size:20px;flex-shrink:0;
+}
+.info-card-header h3{font-size:15px;font-weight:700;color:var(--text)}
+.info-card p{font-size:14px;color:var(--text-light);line-height:1.8}
+.icon-health{background:#E8F5E9}
+.icon-nutrition{background:#FFF3E0}
+.icon-mama{background:#FCE4EC}
+.icon-papa{background:#E3F2FD}
+
+/* Dialog */
+.dialog-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:500;
+  background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;
+  animation:fadeIn .3s;
+}
+.dialog-overlay.show{display:flex}
+.dialog-box{
+  background:var(--card-bg);border-radius:var(--radius);padding:28px 24px;
+  width:90%;max-width:320px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.15);
+  animation:popIn .3s cubic-bezier(.4,0,.2,1);
+}
+.dialog-box h3{font-size:17px;margin-bottom:8px;color:var(--text)}
+.dialog-box p{font-size:14px;color:var(--text-light);margin-bottom:20px}
+.dialog-btns{display:flex;gap:10px;justify-content:center}
+.dialog-btns button{
+  flex:1;padding:12px;border:none;border-radius:12px;font-size:15px;
+  font-weight:700;cursor:pointer;font-family:inherit;transition:transform .2s;
+}
+.dialog-btns button:active{transform:scale(.96)}
+.btn-yes{background:var(--pink-dark);color:#fff}
+.btn-no{background:var(--beige);color:var(--text)}
+
+/* Celebration Overlay */
+.celebration-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:600;
+  display:none;align-items:center;justify-content:center;
+  background:rgba(255,253,249,.92);
+}
+.celebration-overlay.show{display:flex}
+.celebration-content{
+  text-align:center;padding:40px 24px;animation:popIn .6s cubic-bezier(.4,0,.2,1);
+}
+.celebration-emoji{font-size:60px;margin-bottom:16px;animation:bounce 1s infinite}
+.celebration-title{font-size:24px;font-weight:700;color:var(--pink-dark);margin-bottom:8px}
+.celebration-msg{font-size:15px;color:var(--text-light);line-height:1.8;margin-bottom:24px}
+.btn-close-celebration{
+  padding:14px 40px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,var(--pink-dark),var(--peach-dark));
+  color:#fff;font-size:16px;font-weight:700;cursor:pointer;
+  font-family:inherit;box-shadow:0 4px 16px rgba(236,64,122,.3);
+}
+.btn-close-celebration:active{transform:scale(.96)}
+
+/* Confetti Canvas */
+#confetti-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:610;pointer-events:none}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.float-anim{animation:float 3s ease-in-out infinite}
+</style>
+</head>
+<body>
+
+<!-- ===== SETUP PAGE ===== -->
+<div id="page-setup" class="page">
+<div class="setup-page">
+  <div class="setup-logo">
+    <svg width="72" height="72" viewBox="0 0 72 72">
+      <circle cx="36" cy="36" r="34" fill="#FCE4EC" stroke="#F8BBD0" stroke-width="2"/>
+      <text x="36" y="44" text-anchor="middle" font-size="36">🤰</text>
+    </svg>
+  </div>
+  <div class="setup-title">マタニティ ダイアリー</div>
+  <div class="setup-subtitle">あなたの妊娠生活をやさしくサポート</div>
+
+  <div class="setup-card">
+    <label class="field-label">ニックネーム</label>
+    <input type="text" id="nickname" class="field-input" placeholder="例：はなちゃん" maxlength="20">
+
+    <div class="method-group">
+      <label class="field-label">週数の計算方法</label>
+      <div class="method-option" data-method="lmp" onclick="selectMethod('lmp')">
+        <div class="radio"></div>
+        <div class="label">① 最終月経日から自動計算</div>
+      </div>
+      <div id="sub-lmp" class="sub-input">
+        <label class="field-label">最終月経開始日</label>
+        <input type="date" id="input-lmp" class="date-input">
+      </div>
+
+      <div class="method-option" data-method="edd" onclick="selectMethod('edd')">
+        <div class="radio"></div>
+        <div class="label">② 出産予定日から自動計算</div>
+      </div>
+      <div id="sub-edd" class="sub-input">
+        <label class="field-label">出産予定日</label>
+        <input type="date" id="input-edd" class="date-input">
+      </div>
+
+      <div class="method-option" data-method="manual" onclick="selectMethod('manual')">
+        <div class="radio"></div>
+        <div class="label">③ 週数・日数を手動入力</div>
+      </div>
+      <div id="sub-manual" class="sub-input">
+        <div class="manual-row">
+          <input type="number" id="input-week" class="manual-input" min="1" max="42" placeholder="0">
+          <span class="manual-label">週</span>
+          <input type="number" id="input-day" class="manual-input" min="0" max="6" placeholder="0">
+          <span class="manual-label">日</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="error" class="error-msg"></div>
+    <button class="btn-start" onclick="startApp()">はじめる ✨</button>
+  </div>
+</div>
+</div>
+
+<!-- ===== MAIN PAGE ===== -->
+<div id="page-main" class="page hidden">
+  <div class="main-header">
+    <div class="header-info">
+      <h1 id="header-title"></h1>
+      <p id="header-sub"></p>
+    </div>
+    <button class="btn-settings" onclick="showDialog()">⚙️</button>
+  </div>
+  <div class="main-content" id="main-content"></div>
+</div>
+
+<!-- Dialog -->
+<div class="dialog-overlay" id="dialog">
+  <div class="dialog-box">
+    <h3>プロフィール設定</h3>
+    <p>設定画面に戻りますか？</p>
+    <div class="dialog-btns">
+      <button class="btn-no" onclick="closeDialog()">いいえ</button>
+      <button class="btn-yes" onclick="goToSetup()">はい</button>
+    </div>
+  </div>
+</div>
+
+<!-- Celebration -->
+<div class="celebration-overlay" id="celebration">
+  <div class="celebration-content">
+    <div class="celebration-emoji" id="celeb-emoji">🎉</div>
+    <div class="celebration-title" id="celeb-title"></div>
+    <div class="celebration-msg" id="celeb-msg"></div>
+    <button class="btn-close-celebration" onclick="closeCelebration()">ありがとう ♡</button>
+  </div>
+</div>
+<canvas id="confetti-canvas"></canvas>
+
+<script>
+// ===== WEEKLY DATA (全42週) =====
+const weeklyData = [
+  // Week 1
+  {size:"まだ目に見えない大きさです",sizeDetail:"受精はまだですが、身体は準備を始めています",
+   health:"最終月経が始まりました。妊娠週数はこの日からカウントします。規則正しい生活を心がけましょう。",
+   nutrition:"葉酸(400μg/日)を摂り始めましょう。ほうれん草、ブロッコリー、枝豆などが豊富です。",
+   mama:"まだ妊娠したかも分からない時期だけど、なんとなく「今回は違うかも」って直感があったの。身体を大事にしてね。",
+   papa:"パートナーが妊活を頑張っていることを理解して、精神的なサポートを。温かい言葉が一番の栄養です。"},
+  // Week 2
+  {size:"まだ見えないくらい小さい",sizeDetail:"卵子が成熟し排卵の準備中です",
+   health:"排卵期に入ります。基礎体温を測っている方は、低温期から高温期への変化に注目しましょう。",
+   nutrition:"鉄分とビタミンB群を意識して。レバー、赤身肉、豆類をバランスよく摂りましょう。",
+   mama:"この頃は期待と不安が入り混じる時期。リラックスして過ごすのが一番大事だったと思うよ。",
+   papa:"パートナーの気持ちに寄り添い、ストレスを減らせる環境を作ってあげてください。"},
+  // Week 3
+  {size:"約0.1mm",sizeDetail:"砂粒よりもずっと小さな受精卵です",
+   health:"受精が起こる週です。受精卵は細胞分裂を繰り返しながら子宮へ向かっています。",
+   nutrition:"カフェインを控えめに(1日200mg以下)。緑茶やコーヒーの飲みすぎに注意しましょう。",
+   mama:"まだ何も自覚がなかった頃。でもお腹の中ではすごいことが起きているんだよね。生命の不思議。",
+   papa:"今の段階では見た目の変化はありません。でも体内では奇跡が始まっています。"},
+  // Week 4
+  {size:"約1mm（ケシの実くらい）",sizeDetail:"受精卵が子宮内膜に着床します",
+   health:"着床時に少量の出血(着床出血)がある人も。生理予定日頃なので、妊娠検査薬が使えるようになります。",
+   nutrition:"アルコールは完全にやめましょう。葉酸サプリの継続が大切です。",
+   mama:"「生理が遅れてるかも？」ってドキドキしたのを覚えてる。検査薬で陽性が出たときは手が震えたよ！",
+   papa:"パートナーが妊娠検査薬の結果を伝えてきたら、一緒に喜んであげてくださいね。一生忘れない瞬間です。"},
+  // Week 5
+  {size:"約2mm（りんごの種くらい）",sizeDetail:"心臓の元になる管が形成され始めます",
+   health:"つわりが始まる人もいます。少量を頻繁に食べる、炭酸水を飲むなどの対策を。産婦人科の初診予約を。",
+   nutrition:"食べられるものを食べましょう。無理をせず、水分補給をしっかりと。ビタミンB6がつわりに効くことも。",
+   mama:"つわりが始まって「これが噂の…」と思ったよ。食べつわりで常に何か口にしてた。自分を甘やかしていいからね。",
+   papa:"つわりは本当に辛いです。「大丈夫？」と声をかけるだけで救われます。家事を積極的に担いましょう。"},
+  // Week 6
+  {size:"約4-6mm（レンズ豆くらい）",sizeDetail:"小さな心臓が動き始めています！",
+   health:"エコーで心拍が確認できるかもしれません。感動の瞬間！眠気や胸の張りを感じる人も多い時期です。",
+   nutrition:"鉄分が不足しがち。小松菜、ひじき、あさりなどを意識的に。ビタミンCと一緒に摂ると吸収率UP。",
+   mama:"初めてのエコーで心拍を見た時、本当に涙が出たよ。「本当にいるんだ」って実感した瞬間。",
+   papa:"できればエコーに同行してあげてください。小さな心臓の動きを一緒に見る感動は格別ですよ。"},
+  // Week 7
+  {size:"約1cm（ブルーベリーくらい）",sizeDetail:"手足の元になる芽が出てきました",
+   health:"つわりがピークに近づく人も。無理せず休みましょう。母子手帳の交付手続きを始めましょう。",
+   nutrition:"つわりで食べられない時は、ゼリー・フルーツ・おにぎりなど食べやすいものでOK。脱水に注意。",
+   mama:"一番つわりが辛かった時期かも。横になってばかりだったけど、それでいいの。赤ちゃんは元気に育ってるよ。",
+   papa:"家事や買い物を代わりに。つわり中は匂いに敏感なので、強い香りの食べ物は別の部屋で食べてあげて。"},
+  // Week 8
+  {size:"約1.5cm（ラズベリーくらい）",sizeDetail:"顔の輪郭ができ始め、指の元も見えてきます",
+   health:"子宮がグレープフルーツ大に。頻尿が増えることも。この時期の出血や腹痛はすぐに受診を。",
+   nutrition:"タンパク質を意識して。豆腐、卵、鶏肉、魚など。赤ちゃんの体を作る大切な栄養素です。",
+   mama:"だんだん人間の形になっていくエコー写真を見るのが毎回楽しみだったよ。アルバム作るの、おすすめ！",
+   papa:"「お腹に赤ちゃんがいる」という意識を持って接することが大事。ママは常に2人分頑張っています。"},
+  // Week 9
+  {size:"約2.5cm（さくらんぼくらい）",sizeDetail:"しっぽが消え、人間らしい姿に近づいています",
+   health:"つわりが続く人もピークを過ぎる人も。血液量が増え始め、動悸を感じることがあります。",
+   nutrition:"カルシウムを摂りましょう。牛乳、ヨーグルト、チーズ、小魚など。赤ちゃんの骨格形成に必要です。",
+   mama:"「いつまでこのつわり続くの…」と不安になったけど、必ず終わりは来るから。頑張ってるあなたは偉い！",
+   papa:"つわりで家事ができないことを責めないで。「今日は何か食べたいものある？」って聞いてあげて。"},
+  // Week 10
+  {size:"約3cm（いちごくらい）",sizeDetail:"内臓がほぼ完成し、手足を動かし始めます",
+   health:"つわりが落ち着き始める人も。肌荒れや便秘が出ることがあります。水分と食物繊維を意識して。",
+   nutrition:"食物繊維をたっぷりと。さつまいも、ごぼう、バナナ、オートミール。便秘対策にもなります。",
+   mama:"つわりが少し楽になって「やっと食べられる！」と感動したの。体重管理も大事だけど、まずは食べる喜びを。",
+   papa:"体調が安定してきたら、二人で散歩するのもいいですよ。気分転換にもなるし、体力維持にも。"},
+  // Week 11
+  {size:"約4cm（ライムくらい）",sizeDetail:"頭が大きく、全体の半分くらいを占めています",
+   health:"出生前診断を検討する時期です。かかりつけ医に相談してみましょう。気分の浮き沈みも自然なこと。",
+   nutrition:"DHAを含む魚（鮭、サバ、イワシ）を週2回程度。赤ちゃんの脳の発達を助けます。水銀の多い大型魚は控えめに。",
+   mama:"マタニティマークをつけ始めた時期。電車で席を譲ってもらえて嬉しかった。優しい人って多いんだなって。",
+   papa:"出生前診断について一緒に考えましょう。ママ一人で悩ませないで、二人で決めることが大切です。"},
+  // Week 12
+  {size:"約5cm（キウイくらい）",sizeDetail:"顔立ちがはっきりして、あくびをすることも！",
+   health:"つわりが治まる人が多い時期。流産のリスクも下がってきます。周囲への報告を始める人も。",
+   nutrition:"バランスの良い食事に戻しましょう。主食・主菜・副菜を揃えることを意識して。",
+   mama:"やっとつわりが終わって、世界が明るくなった気がしたよ！友達に報告したときの「おめでとう！」が嬉しかった。",
+   papa:"安定期が近づいてきました。両家への報告や、職場への相談など、一緒に段取りを考えましょう。"},
+  // Week 13
+  {size:"約7cm（桃くらい）",sizeDetail:"指紋ができ始め、声帯も形成されています",
+   health:"安定期に入りました！適度な運動を始めましょう。マタニティヨガやウォーキングがおすすめです。",
+   nutrition:"鉄分の必要量が増えてきます。レバー、赤身肉、ほうれん草を積極的に。貧血予防を心がけましょう。",
+   mama:"安定期に入ってホッとした！マタニティヨガを始めたら気持ちよくて、お気に入りの時間になったよ。",
+   papa:"安定期は二人でお出かけのチャンス。体調がよければ、思い出作りの小旅行を計画してみては？"},
+  // Week 14
+  {size:"約8cm（レモンくらい）",sizeDetail:"産毛(ラヌゴ)が全身に生え始めます",
+   health:"食欲が戻ってきます。ただし「二人分食べる」は禁物。適度な体重管理を始めましょう。",
+   nutrition:"間食はナッツ類やフルーツ、ヨーグルトなど栄養のあるものを。お菓子の食べ過ぎに注意。",
+   mama:"食欲が戻って嬉しいけど、体重計が怖くなった時期(笑)。ゆるく管理するのがストレスなくていいよ。",
+   papa:"ママの食事管理に協力を。一緒にヘルシーなメニューを考えたり、料理を作ったりすると喜ばれます。"},
+  // Week 15
+  {size:"約10cm（りんごくらい）",sizeDetail:"表情筋が発達し、しかめっ面もできるように",
+   health:"戌の日のお参り(安産祈願)の時期です。腹帯をつけ始める方も。腰痛対策も始めましょう。",
+   nutrition:"マグネシウムを含む食品(海藻類、ナッツ、豆類)を。こむら返りの予防にもなります。",
+   mama:"戌の日のお参り、ちゃんとした「妊婦」な感じがして嬉しかったなぁ。お腹が少しずつ目立ってきてワクワク。",
+   papa:"安産祈願のお参りに一緒に行きましょう。腹帯を選んだり、お守りを受けたり、大切な思い出に。"},
+  // Week 16
+  {size:"約12cm（アボカドくらい）",sizeDetail:"骨格がしっかりして、動きが活発に",
+   health:"そろそろ胎動を感じ始める人も。最初は「ポコッ」という軽い感覚。お腹の写真を撮り始めるのも◎。",
+   nutrition:"ビタミンDを意識して。干ししいたけ、鮭、卵黄など。日光浴(15分程度)も効果的です。",
+   mama:"初めて胎動を感じた時は「ガスかな？」と思ったけど(笑)、だんだん「これだ！」ってわかるようになるよ。",
+   papa:"胎動が始まったら、お腹に手を当ててみて。まだ外からは分かりにくいけど、語りかけてあげてね。"},
+  // Week 17
+  {size:"約13cm（梨くらい）",sizeDetail:"耳が完成し、外の音が聞こえ始めています",
+   health:"赤ちゃんは音に反応するようになります。音楽を聴かせたり、話しかけたりしてみましょう。",
+   nutrition:"亜鉛を含む食品(牡蠣、牛肉、卵)を。免疫力アップと細胞の成長をサポートします。",
+   mama:"お腹に話しかけ始めた時期。恥ずかしかったけど、赤ちゃんが動いて反応してくれると嬉しかったな。",
+   papa:"赤ちゃんはパパの低い声が聞こえますよ。毎日「おはよう」「おやすみ」と声をかけてあげて。"},
+  // Week 18
+  {size:"約14cm（ベルペッパーくらい）",sizeDetail:"性別が分かることも。指しゃぶりを始めます",
+   health:"性別が分かるかもしれない時期。エコーが楽しみですね。足がつりやすくなるので、就寝前にストレッチを。",
+   nutrition:"食事は少量多回に。胃が圧迫され始めるので、一度にたくさん食べると苦しくなることも。",
+   mama:"性別が分かって名前を考え始めたよ！夫婦でリスト作って、お互いの候補を出し合うの楽しいよ。",
+   papa:"性別が分かったら、一緒に名前候補を考えましょう。赤ちゃんの名前を考える時間は、最高に幸せですよ。"},
+  // Week 19
+  {size:"約15cm（マンゴーくらい）",sizeDetail:"五感が急速に発達しています",
+   health:"お腹が目立ち始めます。マタニティウェアを揃え始める時期。姿勢が変わるので腰痛に注意。",
+   nutrition:"食物繊維と水分を多めに。便秘が悪化しやすい時期です。ヨーグルトや発酵食品も積極的に。",
+   mama:"マタニティ服を買いに行くのが楽しかった！お腹が大きくなるのを実感できて、母になる実感が湧いてきたよ。",
+   papa:"マタニティウェアの買い物に付き合ってあげると喜ばれます。「似合うよ」の一言を忘れずに。"},
+  // Week 20
+  {size:"約16cm（バナナくらい）",sizeDetail:"半分の折り返し地点！まつ毛や眉毛が生えてきます",
+   health:"妊娠期間の半分を過ぎました！中期の検診で詳しいエコーがあるかも。お腹の線(正中線)が出る人も。",
+   nutrition:"鉄分の需要がさらに増加。サプリメントで補う場合は医師に相談を。ビタミンCと一緒に摂ると◎。",
+   mama:"折り返し地点！「もう半分？まだ半分？」って複雑な気持ち(笑)。胎動がはっきりしてきて、毎日が愛しい。",
+   papa:"折り返し地点のお祝いをしてあげては？ちょっとしたサプライズでママの頑張りを労ってあげてください。"},
+  // Week 21
+  {size:"約27cm（にんじんくらい）",sizeDetail:"味覚が発達し、羊水の味を感じています",
+   health:"胎動がしっかり感じられるようになります。お腹の張りを感じることも。横になって休みましょう。",
+   nutrition:"ママが食べるものの味が羊水にも影響します。バランスの良い和食がおすすめです。",
+   mama:"胎動でお腹がぴょこぴょこ動くのが外からも見えるようになったよ！動画で撮っておいて本当によかった。",
+   papa:"お腹に手を当てると胎動を感じられるかも。赤ちゃんに会えるのが楽しみですね。"},
+  // Week 22
+  {size:"約28cm（パパイヤくらい）",sizeDetail:"まぶたが分かれ、目を開閉できるように",
+   health:"おりものが増える時期。清潔に保ちましょう。立ちくらみに注意、急に立ち上がらないで。",
+   nutrition:"カルシウム摂取を継続。赤ちゃんの骨と歯が急速に発達中。乳製品や小魚、豆腐を。",
+   mama:"お腹が重くなってきて、寝る姿勢に悩み始めたの。抱き枕を買ったら世界が変わったよ。おすすめ！",
+   papa:"抱き枕やクッションのプレゼントは喜ばれますよ。寝る時の姿勢が辛くなってくる時期です。"},
+  // Week 23
+  {size:"約29cm（とうもろこしくらい）",sizeDetail:"聴覚がさらに発達。ママの心臓の音が大好きです",
+   health:"妊娠糖尿病の検査がある時期。むくみが出始める人も。足を高くして休む、着圧ソックスを活用。",
+   nutrition:"糖質の摂りすぎに注意。白米を雑穀米にしたり、おやつをフルーツに変えたりするだけでも効果的。",
+   mama:"むくみがひどくて靴が入らなくなった(笑)。着圧ソックス履いて足を上げて寝るだけで全然違うよ。",
+   papa:"毎晩ママの足をマッサージしてあげると天使扱いされますよ。5分でいいので試してみてください。"},
+  // Week 24
+  {size:"約30cm（メロンくらい）",sizeDetail:"肺が発達中。もし早産しても生きられる可能性が出てくる週",
+   health:"赤ちゃんの生存能力が高まる重要な週。この時期からは早産対策も意識しましょう。お腹の張りに注意。",
+   nutrition:"DHA・EPAを含む魚を週2-3回。赤ちゃんの脳と目の発達に重要です。",
+   mama:"「もし今生まれても大丈夫」って聞いて安心した一方、まだお腹にいてほしいって思ったよ。",
+   papa:"緊急時のために産院への道順や連絡先を確認しておきましょう。備えあれば憂いなし。"},
+  // Week 25
+  {size:"約35cm（カリフラワーくらい）",sizeDetail:"皮下脂肪がつき始め、ふっくらしてきます",
+   health:"赤ちゃんがしゃっくりをすることがあります。お腹が規則的にピクピクしたらそれかも！",
+   nutrition:"タンパク質の必要量が増加。毎食、手のひら大のタンパク質源を摂ることを目標に。",
+   mama:"赤ちゃんのしゃっくりが可愛すぎて！ピクッピクッて規則的で、思わず笑っちゃうの。",
+   papa:"ベビー用品のリストを作り始めましょう。必要なもの、あると便利なものを一緒に調べる時間も楽しいです。"},
+  // Week 26
+  {size:"約36cm（レタスくらい）",sizeDetail:"目が開き、光を感じられるようになります",
+   health:"妊娠後期に向けた準備を。出産準備クラスへの参加を検討しましょう。逆子の可能性もまだ心配なし。",
+   nutrition:"ビタミンAを含む食品(にんじん、かぼちゃ、レバー)を。ただしレバーは週1回程度に。",
+   mama:"出産準備クラスに行ったら、同じ時期のママ友ができたよ。情報交換できて心強かった！",
+   papa:"両親学級やパパクラスに参加を。沐浴の練習やおむつ替えの体験は、後で必ず役に立ちます。"},
+  // Week 27
+  {size:"約37cm（カリフラワーくらい）",sizeDetail:"脳が急速に発達し、レム睡眠も始まります",
+   health:"妊娠後期(第3三半期)目前！息切れや動悸が増えることも。無理せず自分のペースで。",
+   nutrition:"間食は栄養のあるものに。干し芋、チーズ、ナッツ、バナナなどがおすすめです。",
+   mama:"後期に入る前にやりたいことリストを作ったよ。美容院、映画、外食…今のうちにたくさん楽しんで！",
+   papa:"「産前にやりたいことリスト」を一緒に作って、できることから叶えてあげましょう。"},
+  // Week 28
+  {size:"約38cm（なすくらい）",sizeDetail:"瞬きができるようになり、夢を見ているかも",
+   health:"妊娠後期に入りました！検診が2週間に1回になります。むくみ・高血圧に注意。",
+   nutrition:"塩分を控えめに(1日7g以下)。出汁を効かせた味付けや、レモン・ハーブを活用しましょう。",
+   mama:"後期に入って「いよいよだ」という気持ちに。出産への不安も出てくるけど、準備が楽しい時期でもあるよ。",
+   papa:"出産準備品の買い出しに付き合って。ベビーカーやチャイルドシートなど、大きな買い物はパパの出番です。"},
+  // Week 29
+  {size:"約39cm（かぼちゃくらい）",sizeDetail:"脂肪がさらにつき、体温調節ができるように",
+   health:"子宮がみぞおちの辺りまで上がってきます。息苦しさや胸焼けを感じることも。食事は少量を頻回に。",
+   nutrition:"消化の良いものを少しずつ。おかゆ、うどん、蒸し野菜など。胃酸が逆流しやすいので、食後すぐ横にならないで。",
+   mama:"胸焼けが辛くて夜中に目が覚めることも。枕を高くして寝ると少し楽になったよ。",
+   papa:"ママが食べやすいメニューを用意してあげて。少量で栄養が摂れるスープなどがおすすめです。"},
+  // Week 30
+  {size:"約40cm（キャベツくらい）",sizeDetail:"赤ちゃんは約1.5kg。脳のしわが増え続けています",
+   health:"お腹がかなり大きくなり、日常動作が大変に。前屈みが辛い時期。靴は脱ぎ履きしやすいものを。",
+   nutrition:"鉄分サプリを処方されている人は忘れずに。貧血が進むと出産時に影響することも。",
+   mama:"靴ひもが結べなくなった(笑)。スリッポンが最高の相棒になったよ。不便だけど、それも楽しい思い出。",
+   papa:"靴の着脱や物を拾うなど、腰をかがめる動作を代わりにしてあげてください。小さな気遣いが嬉しいんです。"},
+  // Week 31
+  {size:"約41cm（ココナッツくらい）",sizeDetail:"五感が全て機能しています。光にも反応します",
+   health:"出産場所や立ち会い出産について具体的に決めましょう。バースプランを書き始める時期です。",
+   nutrition:"コラーゲンやゼラチンを含む食品を。皮膚が伸びてかゆくなることがあるので、保湿もしっかり。",
+   mama:"バースプラン書くの楽しかったよ。理想通りにいかないこともあるけど、自分の希望を持つことは大事。",
+   papa:"バースプランについて一緒に話し合いましょう。立ち会い出産を希望するかどうかも確認を。"},
+  // Week 32
+  {size:"約43cm（白菜くらい）",sizeDetail:"赤ちゃんは約1.8kg。頭を下に向け始める子も",
+   health:"逆子が気になる時期。逆子体操を指導される場合も。お腹の張りが強い時はすぐに休んで。",
+   nutrition:"妊娠後期の体重管理。1週間に300-500g程度の増加が目安。急激な増加は要注意。",
+   mama:"逆子かもって言われてドキドキしたけど、体操してたらクルッと回ったの！諦めないで大丈夫だよ。",
+   papa:"出産準備の大詰め。入院バッグを一緒に準備しましょう。必要なものリストを確認して。"},
+  // Week 33
+  {size:"約44cm（パイナップルくらい）",sizeDetail:"約2kg。免疫システムが発達中です",
+   health:"頻尿がさらに増えます。夜中にトイレで起きることも増えますが、水分は控えないで。",
+   nutrition:"ビタミンKを含む食品(納豆、ブロッコリー、ほうれん草)を。出産時の出血対策になります。",
+   mama:"トイレが近くて夜中に何度も起きるの。「出産後の練習だ」って思うと少し気楽になるよ(笑)。",
+   papa:"ママが夜中にトイレで起きても、優しく見守って。睡眠不足はお互いもうすぐ始まります(笑)。"},
+  // Week 34
+  {size:"約45cm（メロンくらい）",sizeDetail:"約2.2kg。肺の機能がほぼ完成",
+   health:"前駆陣痛(ブラクストン・ヒックス収縮)を感じることも。規則的でなければ心配なし。",
+   nutrition:"エネルギー補給を意識。出産に向けて体力を蓄えましょう。良質な炭水化物を適度に。",
+   mama:"お腹がキューっとなることがあって最初は焦ったけど、前駆陣痛って知って安心した。知識は大事。",
+   papa:"前駆陣痛と本陣痛の違いを一緒に勉強しておきましょう。いざという時に慌てないために。"},
+  // Week 35
+  {size:"約46cm（スイカくらい）",sizeDetail:"約2.5kg。皮下脂肪たっぷりでぽっちゃり",
+   health:"赤ちゃんが下がり始め、胃の圧迫が減ることも。検診が毎週になる人も。入院バッグの最終チェックを。",
+   nutrition:"出産に備えてスタミナのつく食事を。レバー、うなぎ(控えめに)、赤身肉などの鉄分食材も継続。",
+   mama:"赤ちゃんが下がってきて急にお腹が空くようになった！胃が楽になったのは嬉しいけど食べすぎ注意(笑)。",
+   papa:"入院バッグを車に積んでおきましょう。陣痛タクシーの登録も確認。パパの持ち物リストも作って。"},
+  // Week 36
+  {size:"約47cm",sizeDetail:"約2.7kg。いつ生まれても大丈夫な時期が近づいています",
+   health:"臨月まであと少し。いつ陣痛が来てもおかしくありません。おしるしや破水の兆候を覚えておきましょう。",
+   nutrition:"消化の良い食事を心がけて。出産当日も軽く食べられるゼリーやおにぎりを準備しておくと安心。",
+   mama:"いよいよだなぁって毎日ソワソワ。でも焦らなくていいの。赤ちゃんは一番いいタイミングで出てくるよ。",
+   papa:"24時間いつでも駆けつけられる体制を整えましょう。仕事先にも事前に伝えておくと安心です。"},
+  // Week 37
+  {size:"約48cm",sizeDetail:"約2.9kg。正産期！いつ生まれても大丈夫です",
+   health:"正産期に入りました！赤ちゃんは外の世界で生きる準備が整っています。お散歩やスクワットで出産準備を。",
+   nutrition:"ラズベリーリーフティーが子宮収縮を助けるとも。食事はいつも通りバランスよく。",
+   mama:"「いつ来るかな」ってドキドキの毎日。周りの「まだ？」攻撃は気にしないで。赤ちゃんのタイミングを信じて。",
+   papa:"毎日連絡を取り合いましょう。「何かあったらいつでも電話して」の一言が安心感を与えます。"},
+  // Week 38
+  {size:"約49cm",sizeDetail:"約3.0kg。胎脂で覆われた肌がすべすべに",
+   health:"子宮口が少しずつ開き始める人も。散歩や階段昇降で出産を促す人も。でも無理はしないで。",
+   nutrition:"水分をしっかり摂りましょう。出産時の体力維持のために、バランスの良い食事を継続。",
+   mama:"「早く会いたいなぁ」って毎日お腹に話しかけてたよ。でもお腹の中にいるのも今だけだから、大切にしてね。",
+   papa:"ママの話をたくさん聞いてあげて。不安もあると思うけど、一番の味方でいてあげてください。"},
+  // Week 39
+  {size:"約50cm",sizeDetail:"約3.1kg。生まれる準備万端です！",
+   health:"おしるしがある人も。破水したらすぐに産院に連絡を。陣痛の間隔を計る練習をしておきましょう。",
+   nutrition:"食べたいものを食べて、心穏やかに過ごしましょう。入院中の軽食も準備しておくと安心。",
+   mama:"予定日が近づいて毎日ソワソワ。でもね、産後は赤ちゃんのお世話で忙しくなるから、今のうちにゆっくり過ごして。",
+   papa:"陣痛タイマーアプリをスマホに入れておきましょう。ママをマッサージする方法も予習しておいて。"},
+  // Week 40
+  {size:"約50cm",sizeDetail:"約3.2kg。予定日！あなたに会える日が来ます",
+   health:"出産予定日です！予定日ぴったりに生まれる人は実は少数。前後2週間は正常範囲です。焦らないで。",
+   nutrition:"エネルギー補給できる食べ物を常備。おにぎり、バナナ、ゼリー飲料など。",
+   mama:"予定日を過ぎてもなかなか陣痛が来なくて焦ったけど、赤ちゃんが「今だ！」って決めてくれるの。信じて待って。",
+   papa:"予定日を過ぎても焦らないで。「まだ？」は禁句です。「大丈夫だよ、待ってるよ」と安心させてあげて。"},
+  // Week 41
+  {size:"約51cm",sizeDetail:"約3.3kg。少し予定日を過ぎています",
+   health:"予定日超過ですが心配しないで。検診で赤ちゃんの状態を確認しながら待ちます。誘発分娩の相談もあるかも。",
+   nutrition:"しっかり食べて体力を温存。良質な睡眠も大切です。リラックスできることをして過ごしましょう。",
+   mama:"予定日を過ぎた時は不安だったけど、先生が「大丈夫」って言ってくれて安心した。信頼できる先生がいるって大事。",
+   papa:"予定日を過ぎるとママは不安になりがち。一緒にリラックスして過ごしましょう。気分転換のお散歩もいいですね。"},
+  // Week 42
+  {size:"約51cm",sizeDetail:"約3.4kg。そろそろ会えますね！",
+   health:"医師と今後の方針を相談しましょう。誘発分娩や帝王切開になることも。どんな出産も立派です。",
+   nutrition:"いつ出産になってもいいように、消化の良い食事を。水分補給も忘れずに。",
+   mama:"どんな形のお産でも、赤ちゃんに会えることが一番大事。あなたは十分頑張っているよ。もうすぐだからね！",
+   papa:"どんな出産方法になっても、ママを責めないで。そばにいて手を握ってあげてください。それが最高のサポートです。"}
+];
+
+// Week milestone messages
+const milestoneMessages = {
+  1:{emoji:"🎉",title:"妊娠おめでとうございます！",msg:"新しい命が宿りました。\nこれから始まる素敵な旅を\nゆっくり楽しんでいきましょう。\n応援しています！"},
+  5:{emoji:"💗",title:"心臓が動き始める頃です！",msg:"小さな心臓がトクトクと\n動き始めています。\n命の力強さを感じますね。"},
+  12:{emoji:"🌸",title:"安定期に近づいてきました！",msg:"つわりが落ち着いてくる頃。\n少しずつ楽になりますよ。\n頑張っていますね。"},
+  13:{emoji:"✨",title:"安定期に入りました！",msg:"ここまで本当によく頑張りました。\n少しずつ楽しい時間が\n増えてきますよ。"},
+  16:{emoji:"👶",title:"胎動を感じる頃です！",msg:"赤ちゃんの動きを\n感じられるようになります。\n愛おしい瞬間ですね。"},
+  20:{emoji:"🎊",title:"折り返し地点です！",msg:"妊娠期間の半分を過ぎました！\nここまで来られたあなたは\n本当にすごい。"},
+  28:{emoji:"🌟",title:"妊娠後期に入りました！",msg:"いよいよ後半戦。\n赤ちゃんに会える日が\n近づいてきましたよ。"},
+  37:{emoji:"🍀",title:"正産期に入りました！",msg:"いつ赤ちゃんが来ても大丈夫。\n準備はできていますよ。\n最後まで応援しています！"},
+  40:{emoji:"🎁",title:"出産予定日です！",msg:"今日があなたの予定日。\n赤ちゃんに会える日は\nもう目の前です！"}
+};
+
+// ===== SVG GENERATOR =====
+function generateBabySVG(week){
+  const w = Math.min(Math.max(week,1),42);
+  if(w<=4) return svgEgg(w);
+  if(w<=8) return svgBean(w);
+  if(w<=12) return svgSmallBaby(w);
+  if(w<=20) return svgMedBaby(w);
+  if(w<=30) return svgGrowingBaby(w);
+  return svgFullBaby(w);
+}
+
+function svgEgg(w){
+  const s = 12 + w*4;
+  return `<svg viewBox="0 0 180 180"><defs><radialGradient id="eg" cx="40%" cy="35%"><stop offset="0%" stop-color="#FFE0EC"/><stop offset="100%" stop-color="#F8BBD0"/></radialGradient></defs><circle cx="90" cy="90" r="60" fill="#FFF0F5" opacity="0.4"/><ellipse cx="90" cy="90" rx="${s}" ry="${s*1.1}" fill="url(#eg)" stroke="#F48FB1" stroke-width="1.5"><animate attributeName="ry" values="${s*1.1};${s*1.2};${s*1.1}" dur="3s" repeatCount="indefinite"/></ellipse><text x="90" y="95" text-anchor="middle" font-size="10" fill="#EC407A" font-family="sans-serif">tiny</text><circle cx="90" cy="55" r="3" fill="#F48FB1" opacity="0.5"><animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite"/></circle></svg>`;
+}
+
+function svgBean(w){
+  const s = 20+(w-5)*5;
+  return `<svg viewBox="0 0 180 180"><defs><radialGradient id="bn" cx="40%" cy="35%"><stop offset="0%" stop-color="#FFE0EC"/><stop offset="100%" stop-color="#FFAB91"/></radialGradient></defs><circle cx="90" cy="90" r="65" fill="#FFF0F5" opacity="0.3"/><ellipse cx="90" cy="88" rx="${s*0.7}" ry="${s}" fill="url(#bn)" stroke="#F48FB1" stroke-width="1.5" transform="rotate(-10,90,88)"><animate attributeName="ry" values="${s};${s+2};${s}" dur="3s" repeatCount="indefinite"/></ellipse>${w>=7?`<circle cx="82" cy="78" r="2" fill="#5D4037"/><circle cx="98" cy="78" r="2" fill="#5D4037"/>`:''}${w>=6?`<circle cx="90" cy="${70-s*0.4}" r="4" fill="#F48FB1" opacity="0.6"><animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite"/></circle>`:''}<text x="90" y="140" text-anchor="middle" font-size="9" fill="#EC407A">${w>=6?'心臓が動いてるよ':'すくすく成長中'}</text></svg>`;
+}
+
+function svgSmallBaby(w){
+  const prog=(w-9)/3;
+  const headR=22+prog*4;
+  const bodyH=20+prog*10;
+  return `<svg viewBox="0 0 180 180"><defs><radialGradient id="sk" cx="40%" cy="35%"><stop offset="0%" stop-color="#FFE0EC"/><stop offset="100%" stop-color="#FFCCBC"/></radialGradient></defs><circle cx="90" cy="90" r="70" fill="#FFF0F5" opacity="0.25"/><g transform="translate(0,${5-prog*5})"><ellipse cx="90" cy="${95+headR}" rx="${12+prog*4}" ry="${bodyH}" fill="url(#sk)" stroke="#F48FB1" stroke-width="1"/><circle cx="90" cy="${95-headR*0.3}" r="${headR}" fill="url(#sk)" stroke="#F48FB1" stroke-width="1.2"/><circle cx="${84-prog}" cy="${92-headR*0.3}" r="2.5" fill="#5D4037"/><circle cx="${96+prog}" cy="${92-headR*0.3}" r="2.5" fill="#5D4037"/><ellipse cx="90" cy="${98-headR*0.3}" rx="3" ry="1.5" fill="#F48FB1" opacity="0.5"/>${w>=10?`<line x1="${72-prog*3}" y1="${100+headR*0.3}" x2="${78}" y2="${105+headR*0.3}" stroke="#FFCCBC" stroke-width="4" stroke-linecap="round"/><line x1="${108+prog*3}" y1="${100+headR*0.3}" x2="${102}" y2="${105+headR*0.3}" stroke="#FFCCBC" stroke-width="4" stroke-linecap="round"/>`:''}</g><text x="90" y="168" text-anchor="middle" font-size="9" fill="#EC407A">だんだん人の形に</text></svg>`;
+}
+
+function svgMedBaby(w){
+  const prog=(w-13)/7;
+  const headR=24+prog*3;
+  const bodyW=16+prog*8;
+  const bodyH=30+prog*15;
+  return `<svg viewBox="0 0 180 180"><defs><radialGradient id="sk2" cx="40%" cy="35%"><stop offset="0%" stop-color="#FFE0EC"/><stop offset="100%" stop-color="#FFCCBC"/></radialGradient></defs><circle cx="90" cy="90" r="72" fill="#FFF0F5" opacity="0.2"/><g><ellipse cx="90" cy="${85+headR+bodyH*0.4}" rx="${bodyW}" ry="${bodyH}" fill="url(#sk2)" stroke="#F48FB1" stroke-width="1"/><circle cx="90" cy="${82-headR*0.1}" r="${headR}" fill="url(#sk2)" stroke="#F48FB1" stroke-width="1.2"/><circle cx="${83}" cy="${79-headR*0.1}" r="2.5" fill="#5D4037"/><circle cx="${97}" cy="${79-headR*0.1}" r="2.5" fill="#5D4037"/><path d="M86,${86-headR*0.1} Q90,${89-headR*0.1} 94,${86-headR*0.1}" stroke="#F48FB1" stroke-width="1.5" fill="none"/><line x1="${68-prog*5}" y1="${90+headR*0.5}" x2="${76}" y2="${100+headR*0.5}" stroke="#FFCCBC" stroke-width="${5+prog*2}" stroke-linecap="round"/><line x1="${112+prog*5}" y1="${90+headR*0.5}" x2="${104}" y2="${100+headR*0.5}" stroke="#FFCCBC" stroke-width="${5+prog*2}" stroke-linecap="round"/><line x1="${80}" y1="${90+headR+bodyH*0.7}" x2="${75-prog*3}" y2="${100+headR+bodyH*0.8}" stroke="#FFCCBC" stroke-width="${5+prog*2}" stroke-linecap="round"/><line x1="${100}" y1="${90+headR+bodyH*0.7}" x2="${105+prog*3}" y2="${100+headR+bodyH*0.8}" stroke="#FFCCBC" stroke-width="${5+prog*2}" stroke-linecap="round"/></g></svg>`;
+}
+
+function svgGrowingBaby(w){
+  const prog=(w-21)/9;
+  const headR=26+prog*2;
+  const bodyW=22+prog*5;
+  const bodyH=40+prog*8;
+  const curl=10+prog*15;
+  return `<svg viewBox="0 0 180 180"><defs><radialGradient id="sk3" cx="40%" cy="35%"><stop offset="0%" stop-color="#FFE0EC"/><stop offset="100%" stop-color="#FFCCBC"/></radialGradient></defs><g transform="translate(90,90) rotate(${-15+prog*5}) translate(-90,-90)"><ellipse cx="90" cy="${90+headR+bodyH*0.3}" rx="${bodyW}" ry="${bodyH}" fill="url(#sk3)" stroke="#F48FB1" stroke-width="1"/><circle cx="90" cy="${86-headR*0.1}" r="${headR}" fill="url(#sk3)" stroke="#F48FB1" stroke-width="1.2"/><circle cx="${84}" cy="${83-headR*0.1}" r="2" fill="#5D4037"/><circle cx="${96}" cy="${83-headR*0.1}" r="2" fill="#5D4037"/><path d="M86,${89-headR*0.1} Q90,${92-headR*0.1} 94,${89-headR*0.1}" stroke="#F48FB1" stroke-width="1.5" fill="none"/><path d="M${65-prog*4},${92+headR*0.3} Q${70},${110+headR*0.3} ${80},${105+curl}" stroke="#FFCCBC" stroke-width="${7+prog*2}" stroke-linecap="round" fill="none"/><path d="M${115+prog*4},${92+headR*0.3} Q${110},${110+headR*0.3} ${100},${105+curl}" stroke="#FFCCBC" stroke-width="${7+prog*2}" stroke-linecap="round" fill="none"/><path d="M${82},${95+headR+bodyH*0.6} Q${75},${110+headR+bodyH*0.6} ${78-prog*5},${115+headR+bodyH*0.5}" stroke="#FFCCBC" stroke-width="${7+prog*2}" stroke-linecap="round" fill="none"/><path d="M${98},${95+headR+bodyH*0.6} Q${105},${110+headR+bodyH*0.6} ${102+prog*5},${115+headR+bodyH*0.5}" stroke="#FFCCBC" stroke-width="${7+prog*2}" stroke-linecap="round" fill="none"/></g></svg>`;
+}
+
+function svgFullBaby(w){
+  const prog=(w-31)/11;
+  return `<svg viewBox="0 0 180 180"><defs><radialGradient id="sk4" cx="40%" cy="35%"><stop offset="0%" stop-color="#FFE0EC"/><stop offset="100%" stop-color="#FFCCBC"/></radialGradient><radialGradient id="cheek" cx="50%" cy="50%"><stop offset="0%" stop-color="#F48FB1" stop-opacity="0.4"/><stop offset="100%" stop-color="#F48FB1" stop-opacity="0"/></radialGradient></defs><g transform="translate(90,90) rotate(-10) translate(-90,-90)"><ellipse cx="90" cy="108" rx="${26+prog*3}" ry="${46+prog*4}" fill="url(#sk4)" stroke="#F48FB1" stroke-width="1"/><circle cx="90" cy="62" r="${28+prog*2}" fill="url(#sk4)" stroke="#F48FB1" stroke-width="1.2"/>${prog>0.3?`<ellipse cx="78" cy="58" rx="3" ry="2" fill="#5D4037"/><ellipse cx="102" cy="58" rx="3" ry="2" fill="#5D4037"/>`:`<path d="M76,58 Q78,56 80,58" stroke="#5D4037" stroke-width="1.5" fill="none"/><path d="M100,58 Q102,56 104,58" stroke="#5D4037" stroke-width="1.5" fill="none"/>`}<circle cx="76" cy="63" r="5" fill="url(#cheek)"/><circle cx="104" cy="63" r="5" fill="url(#cheek)"/><path d="M86,66 Q90,${69+prog*2} 94,66" stroke="#F48FB1" stroke-width="1.5" fill="none"/><path d="M62,88 Q55,105 72,118" stroke="#FFCCBC" stroke-width="${9+prog*2}" stroke-linecap="round" fill="none"/><path d="M118,88 Q125,105 108,118" stroke="#FFCCBC" stroke-width="${9+prog*2}" stroke-linecap="round" fill="none"/><path d="M80,148 Q72,162 75,170" stroke="#FFCCBC" stroke-width="${9+prog*2}" stroke-linecap="round" fill="none"/><path d="M100,148 Q108,162 105,170" stroke="#FFCCBC" stroke-width="${9+prog*2}" stroke-linecap="round" fill="none"/></g>${w>=37?`<text x="90" y="178" text-anchor="middle" font-size="9" fill="#EC407A">もうすぐ会えるね</text>`:''}</svg>`;
+}
+
+// ===== CONFETTI =====
+function launchConfetti(duration=3000){
+  const canvas=document.getElementById('confetti-canvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  const colors=['#F8BBD0','#FFCCBC','#FFAB91','#F48FB1','#FF80AB','#FFE0B2','#B39DDB','#81D4FA'];
+  const particles=[];
+  for(let i=0;i<80;i++){
+    particles.push({
+      x:Math.random()*canvas.width,y:Math.random()*canvas.height*-0.5,
+      w:Math.random()*8+4,h:Math.random()*6+3,
+      color:colors[Math.floor(Math.random()*colors.length)],
+      vx:(Math.random()-0.5)*3,vy:Math.random()*3+2,
+      rot:Math.random()*360,vr:(Math.random()-0.5)*10,
+      opacity:1
+    });
+  }
+  const start=Date.now();
+  function draw(){
+    const elapsed=Date.now()-start;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const fade=elapsed>duration-800?Math.max(0,1-(elapsed-(duration-800))/800):1;
+    particles.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;p.vy+=0.05;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);
+      ctx.globalAlpha=p.opacity*fade;
+      ctx.fillStyle=p.color;
+      ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      ctx.restore();
+    });
+    if(elapsed<duration)requestAnimationFrame(draw);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+  draw();
+}
+
+// ===== APP STATE =====
+let state={nickname:'',method:'',lmpDate:null,eddDate:null,manualWeek:0,manualDay:0,manualSetDate:null,
+  firstVisit:true,lastSeenWeek:0};
+
+function saveState(){
+  const s={...state};
+  if(s.lmpDate)s.lmpDate=s.lmpDate.toISOString();
+  if(s.eddDate)s.eddDate=s.eddDate.toISOString();
+  if(s.manualSetDate)s.manualSetDate=s.manualSetDate.toISOString();
+  try{localStorage.setItem('pregnancy_tracker',JSON.stringify(s));}catch(e){}
+}
+
+function loadState(){
+  try{
+    const d=localStorage.getItem('pregnancy_tracker');
+    if(!d)return false;
+    const s=JSON.parse(d);
+    state={...s};
+    if(state.lmpDate)state.lmpDate=new Date(state.lmpDate);
+    if(state.eddDate)state.eddDate=new Date(state.eddDate);
+    if(state.manualSetDate)state.manualSetDate=new Date(state.manualSetDate);
+    return true;
+  }catch(e){return false}
+}
+
+function calcWeekDay(){
+  const now=new Date();now.setHours(0,0,0,0);
+  let totalDays=0;
+  if(state.method==='lmp'){
+    const lmp=new Date(state.lmpDate);lmp.setHours(0,0,0,0);
+    totalDays=Math.floor((now-lmp)/(1000*60*60*24));
+  }else if(state.method==='edd'){
+    const edd=new Date(state.eddDate);edd.setHours(0,0,0,0);
+    totalDays=280-Math.floor((edd-now)/(1000*60*60*24));
+  }else if(state.method==='manual'){
+    const setDate=new Date(state.manualSetDate);setDate.setHours(0,0,0,0);
+    const elapsed=Math.floor((now-setDate)/(1000*60*60*24));
+    totalDays=state.manualWeek*7+state.manualDay+elapsed;
+  }
+  totalDays=Math.max(0,totalDays);
+  const week=Math.floor(totalDays/7);
+  const day=totalDays%7;
+  return{week:Math.min(Math.max(week,0),42),day};
+}
+
+// ===== UI FUNCTIONS =====
+let selectedMethod='';
+
+function selectMethod(m){
+  selectedMethod=m;
+  document.querySelectorAll('.method-option').forEach(el=>{
+    el.classList.toggle('active',el.dataset.method===m);
+  });
+  document.querySelectorAll('.sub-input').forEach(el=>el.classList.remove('show'));
+  const sub=document.getElementById('sub-'+m);
+  if(sub)sub.classList.add('show');
+}
+
+function showError(msg){
+  const el=document.getElementById('error');
+  el.textContent=msg;el.style.display=msg?'block':'none';
+}
+
+function startApp(){
+  showError('');
+  const nick=document.getElementById('nickname').value.trim();
+  if(!nick){showError('ニックネームを入力してください');return}
+  if(!selectedMethod){showError('計算方法を選んでください');return}
+
+  state.nickname=nick;state.method=selectedMethod;
+
+  if(selectedMethod==='lmp'){
+    const v=document.getElementById('input-lmp').value;
+    if(!v){showError('最終月経開始日を入力してください');return}
+    state.lmpDate=new Date(v);
+  }else if(selectedMethod==='edd'){
+    const v=document.getElementById('input-edd').value;
+    if(!v){showError('出産予定日を入力してください');return}
+    state.eddDate=new Date(v);
+  }else{
+    const w=parseInt(document.getElementById('input-week').value)||0;
+    const d=parseInt(document.getElementById('input-day').value)||0;
+    if(w<1||w>42){showError('週数は1〜42の間で入力してください');return}
+    if(d<0||d>6){showError('日数は0〜6の間で入力してください');return}
+    state.manualWeek=w;state.manualDay=d;state.manualSetDate=new Date();
+  }
+
+  const isFirst=state.firstVisit;
+  state.firstVisit=false;
+  saveState();
+
+  // Transition
+  document.getElementById('page-setup').classList.add('slide-left');
+  document.getElementById('page-main').classList.remove('hidden');
+
+  renderMain();
+
+  if(isFirst){
+    setTimeout(()=>showCelebration(milestoneMessages[1]||{emoji:'🎉',title:'妊娠おめでとうございます！',msg:'素敵な旅の始まりです。'}),600);
+  }else{
+    checkMilestone();
+  }
+}
+
+function renderMain(){
+  const{week,day}=calcWeekDay();
+  const displayWeek=Math.max(week,1);
+  const idx=Math.min(displayWeek,42)-1;
+  const data=weeklyData[idx];
+
+  document.getElementById('header-title').textContent=`${state.nickname}さん、${displayWeek}週目`;
+  document.getElementById('header-sub').textContent=`${displayWeek}週${day}日 — ${trimesterLabel(displayWeek)}`;
+
+  const edd=calcEDD();
+  const remaining=edd?daysUntil(edd):-1;
+
+  const html=`
+    <div class="baby-card float-anim">
+      <div class="baby-week-badge">${displayWeek}週${day}日</div>
+      <div class="baby-svg-wrap">${generateBabySVG(displayWeek)}</div>
+      <div class="baby-size"><strong>${data.size}</strong><br>${data.sizeDetail}</div>
+      ${remaining>0?`<div style="margin-top:12px;font-size:13px;color:var(--text-lighter)">出産予定日まであと約 <strong style="color:var(--pink-dark)">${remaining}日</strong></div>`:''}
+    </div>
+    <div class="info-card">
+      <div class="info-card-header"><div class="info-icon icon-health">🏥</div><h3>体調管理アドバイス</h3></div>
+      <p>${data.health}</p>
+    </div>
+    <div class="info-card">
+      <div class="info-card-header"><div class="info-icon icon-nutrition">🥗</div><h3>必要な栄養・食事</h3></div>
+      <p>${data.nutrition}</p>
+    </div>
+    <div class="info-card">
+      <div class="info-card-header"><div class="info-icon icon-mama">💕</div><h3>先輩ママからのひとこと</h3></div>
+      <p>${data.mama}</p>
+    </div>
+    <div class="info-card">
+      <div class="info-card-header"><div class="info-icon icon-papa">👔</div><h3>パパへのアドバイス</h3></div>
+      <p>${data.papa}</p>
+    </div>
+  `;
+  document.getElementById('main-content').innerHTML=html;
+}
+
+function trimesterLabel(w){
+  if(w<=13)return '初期（第1三半期）';
+  if(w<=27)return '中期（第2三半期）';
+  return '後期（第3三半期）';
+}
+
+function calcEDD(){
+  if(state.method==='lmp'&&state.lmpDate){
+    const d=new Date(state.lmpDate);d.setDate(d.getDate()+280);return d;
+  }
+  if(state.method==='edd'&&state.eddDate)return new Date(state.eddDate);
+  return null;
+}
+
+function daysUntil(d){
+  const now=new Date();now.setHours(0,0,0,0);
+  const target=new Date(d);target.setHours(0,0,0,0);
+  return Math.max(0,Math.ceil((target-now)/(1000*60*60*24)));
+}
+
+function checkMilestone(){
+  const{week}=calcWeekDay();
+  const displayWeek=Math.max(week,1);
+  if(displayWeek!==state.lastSeenWeek&&milestoneMessages[displayWeek]){
+    state.lastSeenWeek=displayWeek;saveState();
+    setTimeout(()=>showCelebration(milestoneMessages[displayWeek]),800);
+  }else{
+    state.lastSeenWeek=displayWeek;saveState();
+  }
+}
+
+function showCelebration(data){
+  document.getElementById('celeb-emoji').textContent=data.emoji;
+  document.getElementById('celeb-title').textContent=data.title;
+  document.getElementById('celeb-msg').innerHTML=data.msg.replace(/\n/g,'<br>');
+  document.getElementById('celebration').classList.add('show');
+  launchConfetti(4000);
+}
+
+function closeCelebration(){
+  document.getElementById('celebration').classList.remove('show');
+}
+
+function showDialog(){
+  document.getElementById('dialog').classList.add('show');
+}
+
+function closeDialog(){
+  document.getElementById('dialog').classList.remove('show');
+}
+
+function goToSetup(){
+  closeDialog();
+  document.getElementById('page-main').classList.add('hidden');
+  document.getElementById('page-setup').classList.remove('slide-left');
+  // Pre-fill
+  document.getElementById('nickname').value=state.nickname;
+  if(state.method)selectMethod(state.method);
+  if(state.lmpDate)document.getElementById('input-lmp').value=state.lmpDate.toISOString().split('T')[0];
+  if(state.eddDate)document.getElementById('input-edd').value=state.eddDate.toISOString().split('T')[0];
+  if(state.method==='manual'){
+    document.getElementById('input-week').value=state.manualWeek;
+    document.getElementById('input-day').value=state.manualDay;
+  }
+}
+
+// ===== INIT =====
+window.addEventListener('DOMContentLoaded',()=>{
+  if(loadState()&&state.nickname&&state.method&&!state.firstVisit){
+    document.getElementById('page-setup').classList.add('slide-left');
+    document.getElementById('page-main').classList.remove('hidden');
+    renderMain();
+    checkMilestone();
+  }
+});
+</script>
+</body>
+</html>
